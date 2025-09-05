@@ -3,7 +3,7 @@ Flask>=2.3.0
 Werkzeug>=2.3.0
 
 # AI/ML Core - PyTorch with CPU support
---index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch>=2.0.0
 torchvision>=0.15.0
 torchaudio>=2.0.0
