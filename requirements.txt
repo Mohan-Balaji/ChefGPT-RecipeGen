@@ -1,0 +1,26 @@
+# Minimal requirements for testing
+Flask
+Werkzeug
+numpy
+regex
+requests
+torch
+torchvision
+torchaudio
+--index-url https://download.pytorch.org/whl/cpu
+transformers
+tokenizers
+sentencepiece
+huggingface-hub
+packaging
+pyyaml
+safetensors
+tqdm
+filelock
+fsspec
+typing-extensions
+colorama
+charset-normalizer
+idna
+urllib3
+certifi

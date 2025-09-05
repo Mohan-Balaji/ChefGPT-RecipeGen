@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}ChefGPT Recipe Generator - Home{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Hero Section -->
+
+    <!-- Recipe Generation Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0" style="border-radius: 15px;">
+                <div class="card-header bg-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h3 class="card-title text-center mb-0">
+                        <i class="fas fa-magic me-2 text-primary"></i>
+                        Generate Your Recipe
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <form id="recipeForm">
+                        <!-- Prompt Input -->
+                        <div class="mb-4">
+                            <label for="prompt" class="form-label fw-semibold">
+                                <i class="fas fa-edit me-2"></i>
+                                Describe your ingredients :
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="prompt" 
+                                name="prompt" 
+                                rows="4" 
+                                placeholder="e.g., 'Generate a vegetarian recipe for lunch with garlic, olive oil, tofu, onion, avoiding breadcrumbs.'"
+                                style="border-radius: 10px; border: 2px solid #e9ecef; transition: border-color 0.3s;"
+                                onfocus="this.style.borderColor='#667eea'"
+                                onblur="this.style.borderColor='#e9ecef'"
+                                required
+                            ></textarea>
+                            <div class="form-text">
+                            </div>
+                        </div>
+
+
+                        <!-- Submit Buttons -->
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg px-5 me-3" id="generateBtn" style="border-radius: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                                <i class="fas fa-magic me-2"></i>
+                                Generate Recipe
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-lg px-4" id="randomBtn" onclick="generateRandomRecipe()" style="border-radius: 25px; border: 2px solid #667eea; color: #667eea;">
+                                <i class="fas fa-dice me-2"></i>
+                                Random Recipe
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="text-center mt-4" style="display: none;">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Generating recipe...</span>
+        </div>
+        <p class="mt-3 text-muted">
+            <i class="fas fa-cog fa-spin me-2"></i>
+            Generating recipe...
+        </p>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultsSection" class="row justify-content-center mt-5" style="display: none;">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0" style="border-radius: 15px;">
+                <div class="card-header bg-success text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Generated Recipe
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <div id="recipeResult" class="recipe-content" style="font-family: 'Georgia', serif; line-height: 1.8; white-space: pre-wrap; background: #f8f9fa; padding: 2rem; border-radius: 10px; border-left: 4px solid #28a745;"></div>
+                    
+                    <div class="mt-4 text-center">
+                        <button class="btn btn-outline-primary me-3" onclick="copyToClipboard()">
+                            <i class="fas fa-copy me-2"></i>
+                            Copy Recipe
+                        </button>
+                        <button class="btn btn-outline-success" onclick="generateNew()">
+                            <i class="fas fa-plus me-2"></i>
+                            Generate Another Recipe
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Section -->
+    <div id="errorSection" class="row justify-content-center mt-5" style="display: none;">
+        <div class="col-lg-8">
+            <div class="alert alert-danger border-0 shadow" style="border-radius: 15px;">
+                <h4 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Oops! Something went wrong
+                </h4>
+                <p id="errorMessage" class="mb-0"></p>
+                <hr>
+                <button class="btn btn-outline-danger" onclick="hideError()">
+                    <i class="fas fa-times me-2"></i>
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Status -->
+    <div class="row justify-content-center mt-4">
+        <div class="col-lg-8">
+            <div class="text-center">
+                <small class="text-muted">
+                    <i class="fas fa-robot me-1"></i>
+                    Model Status: <span id="modelStatus" class="badge bg-secondary">Checking...</span>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check model status on page load
+    checkModelStatus();
+    
+    // Handle form submission
+    document.getElementById('recipeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        generateRecipe();
+    });
+});
+
+function checkModelStatus() {
+    fetch('/health')
+        .then(response => response.json())
+        .then(data => {
+            const statusElement = document.getElementById('modelStatus');
+            if (data.model_loaded) {
+                statusElement.textContent = 'Ready';
+                statusElement.className = 'badge bg-success';
+            } else {
+                statusElement.textContent = 'Loading...';
+                statusElement.className = 'badge bg-warning';
+            }
+        })
+        .catch(error => {
+            const statusElement = document.getElementById('modelStatus');
+            statusElement.textContent = 'Error';
+            statusElement.className = 'badge bg-danger';
+        });
+}
+
+function generateRecipe() {
+    const form = document.getElementById('recipeForm');
+    const formData = new FormData(form);
+    
+    const data = {
+        prompt: formData.get('prompt'),
+        max_length: 160,  // Default medium length
+        temperature: 0.7  // Default balanced creativity
+    };
+    
+    // Show loading spinner and disable button
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('errorSection').style.display = 'none';
+    
+    const generateBtn = document.getElementById('generateBtn');
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    
+    fetch('/generate_recipe', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Hide loading spinner and reset button
+        document.getElementById('loadingSpinner').style.display = 'none';
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate Recipe';
+        
+        if (data.error) {
+            showError(data.error);
+        } else {
+            showResults(data.generated_recipe);
+        }
+    })
+    .catch(error => {
+        // Hide loading spinner and reset button
+        document.getElementById('loadingSpinner').style.display = 'none';
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate Recipe';
+        showError('Network error: ' + error.message);
+    });
+}
+
+function showResults(recipe) {
+    document.getElementById('recipeResult').textContent = recipe;
+    document.getElementById('resultsSection').style.display = 'block';
+    
+    // Scroll to results
+    document.getElementById('resultsSection').scrollIntoView({ 
+        behavior: 'smooth' 
+    });
+}
+
+function showError(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorSection').style.display = 'block';
+    
+    // Scroll to error
+    document.getElementById('errorSection').scrollIntoView({ 
+        behavior: 'smooth' 
+    });
+}
+
+function hideError() {
+    document.getElementById('errorSection').style.display = 'none';
+}
+
+function copyToClipboard() {
+    const recipeText = document.getElementById('recipeResult').textContent;
+    navigator.clipboard.writeText(reicpeText).then(function() {
+        // Show success message
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+        btn.className = 'btn btn-success me-3';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.className = 'btn btn-outline-primary me-3';
+        }, 2000);
+    });
+}
+
+function generateNew() {
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('recipeForm').scrollIntoView({ 
+        behavior: 'smooth' 
+    });
+    document.getElementById('prompt').focus();
+}
+
+function generateRandomRecipe() {
+    // Array of random recipe prompts
+    const randomPrompts = [
+        "Generate a dairy-free recipe for dinner with chickpeas, tomato, cashews, parmesan, avoiding cilantro.",
+        "Generate a vegetarian recipe for lunch with bell peppers, sesame seeds, chickpeas, potato, avoiding avocado.",
+        "Generate a vegetarian recipe for lunch with garlic, pasta, lemongrass, basil, avoiding chickpeas.",
+        "Generate a vegetarian recipe for dinner with parmesan, cucumber, spinach, cilantro, avoiding lemongrass.",
+        "Generate a vegetarian recipe for lunch with cucumber, potato, carrot, garlic, avoiding pasta.",
+        "Generate a dairy-free recipe for dinner with parmesan, lemongrass, olive oil, cucumber, avoiding yogurt.",
+        "Generate a dairy-free recipe for lunch with cilantro, ginger, parmesan, tomato, avoiding eggplant.",
+        "Generate a vegetarian recipe for lunch with yogurt, mushrooms, cucumber, rice, avoiding potato.",
+        "Generate a vegetarian recipe for dinner with onion, mushrooms, chickpeas, cashews, avoiding spinach.",
+        "Generate a dairy-free recipe for lunch with eggplant, avocado, coconut milk, tofu, avoiding chickpeas.",
+        "Generate a dairy-free recipe for dinner with lentils, eggplant, sesame seeds, avocado, avoiding coconut milk.",
+        "Generate a vegetarian recipe for dinner with coconut milk, spinach, yogurt, eggplant, avoiding ginger.",
+        "Generate a vegetarian recipe for dinner with breadcrumbs, avocado, ginger, olive oil, avoiding garlic.",
+        "Generate a vegetarian recipe for dinner with eggplant, onion, soy sauce, chickpeas, avoiding coconut milk.",
+        "Generate a vegetarian recipe for dinner with tomato, coconut milk, cilantro, eggplant, avoiding avocado.",
+        "Generate a vegetarian recipe for lunch with lentils, tomato, breadcrumbs, lemongrass, avoiding garlic.",
+        "Generate a vegetarian recipe for lunch with spinach, carrot, breadcrumbs, tomato, avoiding mushrooms.",
+        "Generate a dairy-free recipe for lunch with cucumber, onion, yogurt, carrot, avoiding bell peppers.",
+        "Generate a vegetarian recipe for dinner with onion, olive oil, yogurt, lemongrass, avoiding bell peppers.",
+        "Generate a dairy-free recipe for dinner with cashews, rice, carrot, spinach, avoiding sesame seeds.",
+        "Generate a dairy-free recipe for lunch with coconut milk, onion, ginger, rice, avoiding lemongrass.",
+        "Generate a vegetarian recipe for lunch with cucumber, lemongrass, breadcrumbs, olive oil, avoiding spinach.",
+        "Generate a dairy-free recipe for dinner with cucumber, chickpeas, spinach, parmesan, avoiding potato.",
+        "Generate a vegetarian recipe for dinner with basil, spinach, avocado, pasta, avoiding yogurt.",
+        "Generate a vegetarian recipe for dinner with onion, lemongrass, spinach, cashews, avoiding ginger.",
+        "Generate a vegetarian recipe for dinner with lemongrass, cashews, breadcrumbs, lentils, avoiding bell peppers.",
+        "Generate a dairy-free recipe for lunch with onion, basil, coconut milk, breadcrumbs, avoiding pasta.",
+        "Generate a vegetarian recipe for lunch with coconut milk, mushrooms, parmesan, sesame seeds, avoiding olive oil.",
+        "Generate a vegetarian recipe for dinner with rice, sesame seeds, lemongrass, pasta, avoiding avocado.",
+        "Generate a vegetarian recipe for lunch with carrot, chickpeas, tomato, potato, avoiding sesame seeds.",
+        "Generate a dairy-free recipe for dinner with garlic, olive oil, cashews, breadcrumbs, avoiding soy sauce.",
+        "Generate a vegetarian recipe for dinner with cilantro, pasta, lentils, tomato, avoiding basil.",
+        "Generate a dairy-free recipe for dinner with breadcrumbs, eggplant, cilantro, mushrooms, avoiding ginger.",
+        "Generate a vegetarian recipe for lunch with cashews, coconut milk, eggplant, onion, avoiding garlic.",
+        "Generate a dairy-free recipe for lunch with onion, spinach, tomato, carrot, avoiding soy sauce.",
+        "Generate a vegetarian recipe for dinner with mushrooms, ginger, tofu, garlic, avoiding pasta.",
+        "Generate a dairy-free recipe for dinner with potato, cilantro, carrot, spinach, avoiding lentils.",
+        "Generate a dairy-free recipe for lunch with breadcrumbs, sesame seeds, garlic, lentils, avoiding onion.",
+        "Generate a vegetarian recipe for dinner with potato, rice, cilantro, basil, avoiding lemongrass.",
+        "Generate a dairy-free recipe for lunch with tofu, lemongrass, mushrooms, cucumber, avoiding cilantro.",
+        "Generate a dairy-free recipe for lunch with bell peppers, eggplant, sesame seeds, yogurt, avoiding basil.",
+        "Generate a dairy-free recipe for lunch with carrot, yogurt, eggplant, chickpeas, avoiding potato.",
+        "Generate a vegetarian recipe for lunch with ginger, cashews, lemongrass, onion, avoiding bell peppers.",
+        "Generate a dairy-free recipe for dinner with cashews, eggplant, lemongrass, olive oil, avoiding potato.",
+        "Generate a vegetarian recipe for lunch with ginger, soy sauce, cashews, potato, avoiding lentils.",
+        "Generate a vegetarian recipe for lunch with rice, lentils, sesame seeds, ginger, avoiding tofu.",
+        "Generate a vegetarian recipe for dinner with olive oil, cucumber, breadcrumbs, eggplant, avoiding tomato.",
+        "Generate a vegetarian recipe for dinner with carrot, pasta, spinach, cucumber, avoiding coconut milk.",
+        "Generate a dairy-free recipe for lunch with garlic, onion, pasta, sesame seeds, avoiding rice.",
+        "Generate a vegetarian recipe for dinner with basil, ginger, olive oil, spinach, avoiding tofu.",
+        "Generate a dairy-free recipe for dinner with cashews, ginger, pasta, breadcrumbs, avoiding cucumber.",
+        "Generate a dairy-free recipe for lunch with bell peppers, yogurt, cashews, onion, avoiding chickpeas.",
+        "Generate a dairy-free recipe for dinner with lemongrass, rice, breadcrumbs, spinach, avoiding olive oil.",
+        "Generate a dairy-free recipe for dinner with carrot, onion, breadcrumbs, olive oil, avoiding pasta.",
+        "Generate a dairy-free recipe for lunch with lemongrass, carrot, onion, cashews, avoiding spinach.",
+        "Generate a vegetarian recipe for lunch with breadcrumbs, tofu, sesame seeds, avocado, avoiding potato.",
+        "Generate a vegetarian recipe for dinner with cilantro, potato, lentils, lemongrass, avoiding carrot.",
+        "Generate a vegetarian recipe for dinner with bell peppers, eggplant, yogurt, coconut milk, avoiding cashews.",
+        "Generate a vegetarian recipe for dinner with cilantro, chickpeas, basil, lemongrass, avoiding cashews.",
+        "Generate a vegetarian recipe for lunch with bell peppers, eggplant, avocado, pasta, avoiding chickpeas.",
+        "Generate a dairy-free recipe for dinner with olive oil, sesame seeds, lemongrass, bell peppers, avoiding ginger."
+    ];
+    
+    // Select a random prompt
+    const randomPrompt = randomPrompts[Math.floor(Math.random() * randomPrompts.length)];
+    
+    // Fill the textarea with the random prompt
+    document.getElementById('prompt').value = randomPrompt;
+    
+    // Generate the recipe immediately
+    generateRecipe();
+}
+</script>
+{% endblock %}
