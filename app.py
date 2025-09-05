@@ -51,22 +51,25 @@ def load_model():
         model.eval()
         logger.info("Base model loaded successfully")
         
-        # Apply dynamic quantization for CPU optimization
-        quantized_model = torch.quantization.quantize_dynamic(
-            model, {torch.nn.Linear}, dtype=torch.qint8
-        )
-        
-        # Load the quantized state dictionary
+        # Try to load quantized model, fallback to base model if not available
         quantized_state_dict_path = os.path.join(MODEL_DIR, 'quantized_model_state_dict.pth')
         if os.path.exists(quantized_state_dict_path):
-            quantized_model.load_state_dict(
-                torch.load(quantized_state_dict_path, map_location=device)
-            )
-            model = quantized_model
-            logger.info("Quantized model state dictionary loaded successfully")
+            try:
+                # Apply dynamic quantization for CPU optimization
+                quantized_model = torch.quantization.quantize_dynamic(
+                    model, {torch.nn.Linear}, dtype=torch.qint8
+                )
+                
+                # Load the quantized state dictionary
+                quantized_model.load_state_dict(
+                    torch.load(quantized_state_dict_path, map_location=device)
+                )
+                model = quantized_model
+                logger.info("Quantized model state dictionary loaded successfully")
+            except Exception as e:
+                logger.warning(f"Failed to load quantized model, using base model: {e}")
         else:
-            logger.error(f"Quantized state dictionary not found at {quantized_state_dict_path}")
-            return False
+            logger.warning(f"Quantized state dictionary not found at {quantized_state_dict_path}, using base model")
         
         # Move model to CPU and set to evaluation mode
         model.to(device)
@@ -149,7 +152,7 @@ def generate_recipe_endpoint():
     """Main recipe generation endpoint"""
     try:
         if not model_loaded:
-            return jsonify({'error': 'Model not loaded'}), 503
+            return jsonify({'error': 'Model is still loading. Please wait a few minutes and try again.'}), 503
         
         data = request.get_json()
         if not data or 'prompt' not in data:
