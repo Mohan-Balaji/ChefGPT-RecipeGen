@@ -1,26 +1,36 @@
-# Minimal requirements for testing
-Flask
-Werkzeug
-numpy
-regex
-requests
-torch
-torchvision
-torchaudio
+# Core Flask web framework
+Flask>=2.3.0
+Werkzeug>=2.3.0
+
+# AI/ML Core - PyTorch with CPU support
 --index-url https://download.pytorch.org/whl/cpu
-transformers
-tokenizers
-sentencepiece
-huggingface-hub
-packaging
-pyyaml
-safetensors
-tqdm
-filelock
-fsspec
-typing-extensions
-colorama
-charset-normalizer
-idna
-urllib3
-certifi
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Hugging Face Transformers for T5 model
+transformers>=4.30.0
+tokenizers>=0.13.0
+sentencepiece>=0.1.99
+huggingface-hub>=0.15.0
+safetensors>=0.3.0
+
+# Core dependencies
+numpy>=1.24.0
+regex>=2023.6.0
+packaging>=23.0
+pyyaml>=6.0
+filelock>=3.12.0
+fsspec>=2023.6.0
+typing-extensions>=4.5.0
+
+# Network and security
+requests>=2.31.0
+urllib3>=2.0.0
+certifi>=2023.7.0
+charset-normalizer>=3.2.0
+idna>=3.4
+
+# Optional utilities
+tqdm>=4.65.0
+colorama>=0.4.6
